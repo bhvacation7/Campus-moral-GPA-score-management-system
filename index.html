@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TYICC — Moral Management</title>
+<script src="./supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#4f9cf9;--accent2:#a78bfa;--red:#f87171;--green:#4ade80;
+  --text:#fff;--text-dim:rgba(255,255,255,0.55);
+  --glass:rgba(255,255,255,0.08);--glass-border:rgba(255,255,255,0.15);
+  --blur:blur(20px);--radius:16px;--radius-sm:10px;
+}
+html,body{height:100%;font-family:'Inter',sans-serif;color:var(--text);overflow:hidden}
+#bg{position:fixed;inset:0;z-index:0;background:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=85&w=2560') center/cover no-repeat}
+#bg::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,0.55),rgba(0,20,60,0.5))}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center}
+.login-card{width:420px;background:rgba(10,10,30,0.7);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.18);border-radius:24px;padding:52px 48px}
+.login-logo{font-size:11px;font-weight:700;letter-spacing:0.3em;color:var(--text-dim);text-transform:uppercase;margin-bottom:36px}
+.login-title{font-size:30px;font-weight:700;margin-bottom:8px}
+.login-sub{font-size:14px;color:var(--text-dim);margin-bottom:40px}
+
+/* MS Button */
+.btn-ms{width:100%;padding:14px 20px;background:#fff;border:none;border-radius:var(--radius-sm);color:#1a1a1a;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.2s;margin-bottom:16px}
+.btn-ms:hover{background:#f0f0f0;transform:translateY(-1px)}
+.ms-icon{width:20px;height:20px;flex-shrink:0}
+
+.divider{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.15)}
+.divider span{font-size:12px;color:var(--text-dim);white-space:nowrap}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.1em;color:var(--text-dim);text-transform:uppercase;margin-bottom:7px}
+.field input{width:100%;padding:12px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:var(--radius-sm);color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s}
+.field input:focus{border-color:var(--accent)}
+.field input::placeholder{color:rgba(255,255,255,0.28)}
+.btn-login{width:100%;margin-top:6px;padding:13px;background:var(--accent);border:none;border-radius:var(--radius-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity 0.2s}
+.btn-login:hover{opacity:0.88}
+#loginError{margin-top:12px;font-size:13px;color:var(--red);text-align:center;min-height:18px}
+
+/* APP */
+#app{display:none;position:relative;z-index:10;height:100vh;flex-direction:column}
+#app.visible{display:flex}
+
+/* NAV */
+.nav{height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(0,0,0,0.28);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08)}
+.nav-left{display:flex;align-items:center;gap:24px}
+.nav-brand{font-size:14px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase}
+.nav-tabs{display:flex;gap:3px}
+.nav-tab{padding:5px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all 0.2s;font-family:inherit}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,0.08)}
+.nav-tab.active{color:#fff;background:rgba(255,255,255,0.15)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-user{display:flex;align-items:center;gap:8px}
+.nav-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+#navEmail{font-size:12px;color:var(--text-dim)}
+.btn-nav{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.07);color:#fff}
+.btn-nav:hover{background:rgba(255,255,255,0.14)}
+
+/* LAYOUT */
+.main{flex:1;overflow:hidden;display:grid;grid-template-columns:290px 1fr 270px}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;background:rgba(0,0,0,0.22);backdrop-filter:blur(8px)}
+.sidebar-head{padding:18px 18px 12px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.sidebar-head h3{font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px}
+.search-input{width:100%;padding:8px 12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none;transition:border-color 0.2s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:rgba(255,255,255,0.28)}
+.add-row{display:flex;gap:7px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.add-row input{flex:1;padding:7px 11px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+.add-row input:focus{border-color:var(--accent)}
+.add-row input::placeholder{color:rgba(255,255,255,0.28)}
+.btn-add{padding:7px 13px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.roster{flex:1;overflow-y:auto;padding:7px 10px}
+.roster::-webkit-scrollbar{width:3px}
+.roster::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.14);border-radius:2px}
+.stu-card{padding:11px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:11px;transition:background 0.15s;margin-bottom:3px;border:1px solid transparent}
+.stu-card:hover{background:rgba(255,255,255,0.07)}
+.stu-card.selected{background:rgba(79,156,249,0.17);border-color:rgba(79,156,249,0.32)}
+.stu-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.stu-name{font-size:14px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu-pts{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.09);flex-shrink:0}
+.stu-pts.pos{color:var(--green)}.stu-pts.neg{color:var(--red)}
+
+/* CENTER */
+.center{display:flex;flex-direction:column;padding:22px;gap:16px;overflow-y:auto;background:rgba(0,0,0,0.07)}
+.center::-webkit-scrollbar{width:3px}
+.center::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.14);border-radius:2px}
+.action-card{background:rgba(255,255,255,0.08);backdrop-filter:var(--blur);border:1px solid var(--glass-border);border-radius:var(--radius);padding:24px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:170px;gap:10px}
+.empty-icon{font-size:30px;opacity:0.3}
+.empty-text{font-size:13px;color:var(--text-dim)}
+.sel-header{display:flex;align-items:center;gap:15px;margin-bottom:20px}
+.sel-av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex-shrink:0}
+.sel-name{font-size:19px;font-weight:700}
+.sel-cls{font-size:12px;color:var(--text-dim);margin-top:2px}
+.sel-total{margin-left:auto;text-align:right}
+.sel-total-num{font-size:30px;font-weight:700}
+.sel-total-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em}
+.quick-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:16px}
+.qbtn{padding:13px 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.11);background:rgba(255,255,255,0.05);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.qbtn:hover{transform:translateY(-1px)}
+.qbtn.plus{border-color:rgba(74,222,128,0.28);color:var(--green)}
+.qbtn.plus:hover{background:rgba(74,222,128,0.1)}
+.qbtn.minus{border-color:rgba(248,113,113,0.28);color:var(--red)}
+.qbtn.minus:hover{background:rgba(248,113,113,0.1)}
+.manual-row{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:9px;align-items:end}
+.fg label{display:block;font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px}
+.fi{width:100%;padding:10px 13px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.11);border-radius:9px;color:#fff;font-size:13px;font-family:inherit;outline:none;transition:border-color 0.2s}
+.fi:focus{border-color:var(--accent)}
+.fi option{background:#1a1a2e;color:#fff}
+.btn-sub{padding:10px 20px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;height:42px;white-space:nowrap;transition:opacity 0.2s}
+.btn-sub:hover{opacity:0.85}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.stat-box{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:16px 18px}
+.stat-val{font-size:26px;font-weight:700;margin-bottom:3px}
+.stat-lbl{font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
+.feed-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);overflow:hidden}
+.feed-head{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase}
+.feed-item{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:13px;transition:background 0.15s}
+.feed-item:hover{background:rgba(255,255,255,0.04)}
+.feed-item:last-child{border-bottom:none}
+.feed-score{font-size:14px;font-weight:700;width:42px;text-align:center;flex-shrink:0}
+.feed-score.pos{color:var(--green)}.feed-score.neg{color:var(--red)}
+.feed-name{font-size:13px;font-weight:500;flex-shrink:0;width:84px}
+.feed-reason{font-size:13px;color:var(--text-dim);flex:1}
+.feed-cat{font-size:10px;font-weight:600;padding:2px 8px;border-radius:7px;background:rgba(255,255,255,0.09);color:var(--text-dim);flex-shrink:0}
+.feed-time{font-size:11px;color:rgba(255,255,255,0.28);flex-shrink:0}
+.feed-del{width:22px;height:22px;border-radius:5px;border:none;background:transparent;color:rgba(255,255,255,0.18);cursor:pointer;font-size:12px;flex-shrink:0;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.feed-del:hover{background:rgba(248,113,113,0.18);color:var(--red)}
+
+/* RIGHT */
+.right-panel{border-left:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;background:rgba(0,0,0,0.2);backdrop-filter:blur(8px);overflow-y:auto}
+.right-panel::-webkit-scrollbar{width:3px}
+.right-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.14);border-radius:2px}
+.rp-sec{padding:18px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.rp-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:13px}
+.lb-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.lb-item:last-child{border-bottom:none}
+.lb-rank{font-size:11px;color:var(--text-dim);width:16px;text-align:center;flex-shrink:0}
+.lb-name{font-size:13px;font-weight:500;flex:1}
+.lb-score{font-size:13px;font-weight:700}
+.lb-score.pos{color:var(--green)}.lb-score.neg{color:var(--red)}
+.bg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.bg-thumb{height:52px;border-radius:8px;cursor:pointer;overflow:hidden;border:2px solid transparent;transition:border-color 0.2s}
+.bg-thumb:hover{border-color:rgba(255,255,255,0.38)}
+.bg-thumb.active{border-color:var(--accent)}
+.bg-thumb img{width:100%;height:100%;object-fit:cover}
+.btn-export{width:100%;padding:11px;border-radius:9px;border:none;background:rgba(33,115,70,0.65);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s}
+.btn-export:hover{background:rgba(33,115,70,0.88)}
+
+/* TOAST */
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(15,15,35,0.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.13);border-radius:12px;padding:11px 22px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all 0.28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(74,222,128,0.38);color:var(--green)}
+.toast.error{border-color:rgba(248,113,113,0.38);color:var(--red)}
+*{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.13) transparent}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">TYICC · Moral Management</div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to continue</div>
+
+    <!-- Microsoft SSO -->
+    <button class="btn-ms" onclick="doMSLogin()">
+      <svg class="ms-icon" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Sign in with Microsoft
+    </button>
+
+    <div class="divider"><span>or use email & password</span></div>
+
+    <!-- Email/Password -->
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="teacher@tyicc.edu" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doEmailLogin()">
+    </div>
+    <button class="btn-login" onclick="doEmailLogin()">Sign in</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="nav">
+    <div class="nav-left">
+      <div class="nav-brand">TYICC</div>
+      <div class="nav-tabs" id="classTabs"></div>
+    </div>
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="nav-avatar" id="navAvatarInitial"></div>
+        <span id="navEmail"></span>
+      </div>
+      <button class="btn-nav" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="main">
+    <!-- ROSTER -->
+    <div class="sidebar">
+      <div class="sidebar-head">
+        <h3>Students</h3>
+        <input class="search-input" id="rosterSearch" placeholder="Search…" oninput="renderRoster()">
+      </div>
+      <div class="add-row">
+        <input id="newStuName" placeholder="New student name…" onkeydown="if(event.key==='Enter') addStudent()">
+        <button class="btn-add" onclick="addStudent()">+ Add</button>
+      </div>
+      <div class="roster" id="roster"></div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="center">
+      <div class="action-card">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">👈</div>
+          <div class="empty-text">Select a student to start scoring</div>
+        </div>
+        <div id="actionPanel" style="display:none">
+          <div class="sel-header">
+            <div class="sel-av" id="selAv"></div>
+            <div>
+              <div class="sel-name" id="selName"></div>
+              <div class="sel-cls" id="selCls"></div>
+            </div>
+            <div class="sel-total">
+              <div class="sel-total-num" id="selTotal">0</div>
+              <div class="sel-total-lbl">Total Points</div>
+            </div>
+          </div>
+          <div class="quick-btns">
+            <button class="qbtn plus" onclick="quickScore(1)">+1</button>
+            <button class="qbtn plus" onclick="quickScore(2)">+2</button>
+            <button class="qbtn plus" onclick="quickScore(5)">+5</button>
+            <button class="qbtn plus" onclick="quickScore(10)">+10</button>
+            <button class="qbtn minus" onclick="quickScore(-1)">−1</button>
+            <button class="qbtn minus" onclick="quickScore(-2)">−2</button>
+            <button class="qbtn minus" onclick="quickScore(-5)">−5</button>
+            <button class="qbtn minus" onclick="quickScore(-10)">−10</button>
+          </div>
+          <div class="manual-row">
+            <div class="fg">
+              <label>Category</label>
+              <select class="fi" id="fCat">
+                <option value="Conduct">Conduct</option>
+                <option value="Academic">Academic</option>
+                <option value="Service">Service</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Custom Score</label>
+              <input class="fi" type="number" id="fScore" placeholder="e.g. 3">
+            </div>
+            <div class="fg">
+              <label>Reason</label>
+              <input class="fi" type="text" id="fReason" placeholder="Optional note…">
+            </div>
+            <button class="btn-sub" onclick="submitManual()">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Class Total</div></div>
+        <div class="stat-box"><div class="stat-val" id="statCount">0</div><div class="stat-lbl">Records</div></div>
+        <div class="stat-box"><div class="stat-val" id="statAvg">0.0</div><div class="stat-lbl">Avg Score</div></div>
+      </div>
+
+      <div class="feed-card">
+        <div class="feed-head">Recent Activity</div>
+        <div id="feedBody"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-panel">
+      <div class="rp-sec">
+        <div class="rp-title">Leaderboard</div>
+        <div id="leaderboard"></div>
+      </div>
+      <div class="rp-sec">
+        <div class="rp-title">Background</div>
+        <div class="bg-grid" id="bgGrid"></div>
+      </div>
+      <div class="rp-sec">
+        <div class="rp-title">Export</div>
+        <button class="btn-export" onclick="exportPDF()">⬇ Download PDF Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const SUPABASE_URL = 'https://nxbzzntxpeteahuzgfbg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xdZNdsA7tgEnGOhcZIanBA_pRL_MjAd';
+const MS_CLIENT_ID = '6ba85a36-0064-4027-9a4c-19fc766ffd02';
+const MS_TENANT_ID = '11a7be2a-7c3f-4098-94d0-019f9db6a721';
+const REDIRECT_URI = 'https://tyiccdashboard.audience.ltd/index.html';
+
+const CLASSES = ['G1-1','G1-2','G1-3','G1-4','G1-5'];
+const BG_IMAGES = [
+  {url:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1600',label:'Alps'},
+  {url:'https://images.unsplash.com/photo-1501854140801-50d01698950b?q=80&w=1600',label:'Forest'},
+  {url:'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600',label:'Meadow'},
+  {url:'https://images.unsplash.com/photo-1518098268026-4e89f1a2cd8e?q=80&w=1600',label:'Coast'},
+];
+
+let sb, currentClass='G1-1', currentData=[], students=[], selectedStu=null;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { flowType: 'pkce' }
+  });
+  buildTabs(); buildBgGrid();
+
+  // Listen for auth state changes (handles OAuth callback automatically)
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      enterApp(session.user);
+    }
+  });
+
+  // Check existing session
+  const {data:{session}} = await sb.auth.getSession();
+  if (session) enterApp(session.user);
+});
+
+// ── MICROSOFT LOGIN ──
+async function doMSLogin() {
+  const {error} = await sb.auth.signInWithOAuth({
+    provider: 'azure',
+    options: {
+      scopes: 'openid profile email',
+      redirectTo: REDIRECT_URI,
+    }
+  });
+  if (error) showError(error.message);
+}
+
+// ── EMAIL LOGIN ──
+async function doEmailLogin() {
+  const e = document.getElementById('loginEmail').value.trim();
+  const p = document.getElementById('loginPassword').value;
+  showError('');
+  if (!e || !p) { showError('Please enter email and password'); return; }
+  const {data, error} = await sb.auth.signInWithPassword({email:e, password:p});
+  if (error) { showError(error.message); return; }
+  enterApp(data.user);
+}
+
+function showError(msg) {
+  document.getElementById('loginError').textContent = msg;
+}
+
+// ── APP ENTRY ──
+function enterApp(user) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  const email = user.email || user.user_metadata?.email || '';
+  const name = user.user_metadata?.full_name || user.user_metadata?.name || email;
+  document.getElementById('navEmail').textContent = email;
+  document.getElementById('navAvatarInitial').textContent = (name || email).charAt(0).toUpperCase();
+  loadAll();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.href = REDIRECT_URI;
+}
+
+// ── DATA ──
+async function loadAll() { await Promise.all([loadStudents(), loadRecords()]); }
+
+async function loadStudents() {
+  const {data} = await sb.from('students').select('*').eq('class', currentClass).order('name');
+  students = data || [];
+  renderRoster(); renderLeaderboard();
+}
+
+async function loadRecords() {
+  const {data} = await sb.from('eval_records').select('*').eq('student_class', currentClass).order('created_at', {ascending:false});
+  currentData = data || [];
+  renderFeed(); renderStats(); renderLeaderboard();
+}
+
+async function switchClass(cls, el) {
+  currentClass = cls; selectedStu = null;
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('actionPanel').style.display = 'none';
+  await loadAll();
+}
+
+// ── STUDENTS ──
+async function addStudent() {
+  const inp = document.getElementById('newStuName');
+  const name = inp.value.trim();
+  if (!name) return;
+  const {error} = await sb.from('students').insert([{name, class:currentClass}]);
+  if (!error) { inp.value=''; await loadStudents(); toast('Student added','success'); }
+  else toast('Error: '+error.message,'error');
+}
+
+function selectStudent(stu) {
+  selectedStu = stu; renderRoster();
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('actionPanel').style.display = 'block';
+  document.getElementById('selAv').textContent = stu.name.charAt(0).toUpperCase();
+  document.getElementById('selName').textContent = stu.name;
+  document.getElementById('selCls').textContent = currentClass;
+  updateSelTotal();
+}
+
+function renderRoster() {
+  const q = document.getElementById('rosterSearch').value.toLowerCase();
+  const list = students.filter(s=>s.name.toLowerCase().includes(q));
+  const totals = {};
+  currentData.forEach(r=>{totals[r.student_name]=(totals[r.student_name]||0)+r.score;});
+  document.getElementById('roster').innerHTML = list.length ? list.map(s=>{
+    const t = totals[s.name]||0;
+    const sel = selectedStu&&selectedStu.id===s.id?' selected':'';
+    return `<div class="stu-card${sel}" onclick='selectStudent(${JSON.stringify(s)})'>
+      <div class="stu-av">${s.name.charAt(0).toUpperCase()}</div>
+      <div class="stu-name">${s.name}</div>
+      <div class="stu-pts ${t>=0?'pos':'neg'}">${t>0?'+':''}${t}</div>
+    </div>`;
+  }).join('') : '<div style="padding:20px;font-size:13px;color:rgba(255,255,255,0.28);text-align:center;">No students yet</div>';
+}
+
+// ── SCORING ──
+function updateSelTotal() {
+  if (!selectedStu) return;
+  const t = currentData.filter(r=>r.student_name===selectedStu.name).reduce((s,r)=>s+r.score,0);
+  const el = document.getElementById('selTotal');
+  el.textContent = (t>0?'+':'')+t;
+  el.style.color = t>=0?'var(--green)':'var(--red)';
+}
+
+async function quickScore(score) {
+  if (!selectedStu) return;
+  await addRecord(selectedStu.name, document.getElementById('fCat').value, score, document.getElementById('fReason').value||'—');
+}
+
+async function submitManual() {
+  if (!selectedStu) return;
+  const score = parseInt(document.getElementById('fScore').value);
+  if (isNaN(score)) { toast('Enter a valid score','error'); return; }
+  const cat = document.getElementById('fCat').value;
+  const reason = document.getElementById('fReason').value||'—';
+  document.getElementById('fScore').value='';
+  document.getElementById('fReason').value='';
+  await addRecord(selectedStu.name, cat, score, reason);
+}
+
+async function addRecord(name, cat, score, reason) {
+  const {error} = await sb.from('eval_records').insert([{student_name:name,student_class:currentClass,category:cat,score,reason}]);
+  if (error) { toast('Error: '+error.message,'error'); return; }
+  toast((score>0?'+':'')+score+' · '+name, score>=0?'success':'error');
+  await loadRecords(); renderRoster();
+}
+
+async function deleteRecord(id) {
+  await sb.from('eval_records').delete().eq('id',id);
+  await loadRecords(); renderRoster(); updateSelTotal();
+}
+
+// ── RENDER ──
+function renderStats() {
+  const total = currentData.reduce((s,r)=>s+r.score,0);
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statCount').textContent = currentData.length;
+  document.getElementById('statAvg').textContent = currentData.length?(total/currentData.length).toFixed(1):'0.0';
+}
+
+function renderFeed() {
+  const el = document.getElementById('feedBody');
+  if (!currentData.length) {
+    el.innerHTML='<div style="padding:28px;text-align:center;font-size:13px;color:rgba(255,255,255,0.28);">No records yet</div>';
+    return;
+  }
+  el.innerHTML = currentData.slice(0,30).map(r=>{
+    const pos = r.score>=0;
+    const t = new Date(r.created_at);
+    const time = t.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="feed-item">
+      <div class="feed-score ${pos?'pos':'neg'}">${r.score>0?'+':''}${r.score}</div>
+      <div class="feed-name">${r.student_name}</div>
+      <div class="feed-cat">${r.category}</div>
+      <div class="feed-reason">${r.reason}</div>
+      <div class="feed-time">${time}</div>
+      <button class="feed-del" onclick="deleteRecord(${r.id})">✕</button>
+    </div>`;
+  }).join('');
+  updateSelTotal();
+}
+
+function renderLeaderboard() {
+  const totals={};
+  students.forEach(s=>totals[s.name]=0);
+  currentData.forEach(r=>{if(r.student_name in totals)totals[r.student_name]+=r.score;});
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  document.getElementById('leaderboard').innerHTML = sorted.length ?
+    sorted.map(([name,score],i)=>`
+      <div class="lb-item">
+        <div class="lb-rank">${i+1}</div>
+        <div class="lb-name">${name}</div>
+        <div class="lb-score ${score>=0?'pos':'neg'}">${score>0?'+':''}${score}</div>
+      </div>`).join('') :
+    '<div style="font-size:13px;color:rgba(255,255,255,0.28);">No data yet</div>';
+}
+
+// ── UI HELPERS ──
+function buildTabs() {
+  document.getElementById('classTabs').innerHTML = CLASSES.map((cls,i)=>
+    `<button class="nav-tab${i===0?' active':''}" onclick="switchClass('${cls}',this)">${cls.replace('G','Grade ')}</button>`
+  ).join('');
+}
+
+function buildBgGrid() {
+  document.getElementById('bgGrid').innerHTML = BG_IMAGES.map((b,i)=>
+    `<div class="bg-thumb${i===0?' active':''}" onclick="setBg(${i},this)"><img src="${b.url}" alt="${b.label}"></div>`
+  ).join('');
+  document.getElementById('bg').style.backgroundImage = `url('${BG_IMAGES[0].url}')`;
+}
+
+function setBg(i,el) {
+  document.getElementById('bg').style.backgroundImage = `url('${BG_IMAGES[i].url}')`;
+  document.querySelectorAll('.bg-thumb').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── PDF ──
+function exportPDF() {
+  if (!currentData.length) { toast('No data to export','error'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18); doc.text('TYICC Moral Evaluation Report',14,20);
+  doc.setFontSize(11); doc.setTextColor(120);
+  doc.text(`Class: ${currentClass}  |  ${new Date().toLocaleString()}`,14,28);
+  doc.autoTable({
+    startY:35,
+    head:[['Student','Category','Score','Reason','Date']],
+    body:currentData.map(r=>[r.student_name,r.category,r.score>0?`+${r.score}`:r.score,r.reason,new Date(r.created_at).toLocaleDateString()]),
+    headStyles:{fillColor:[30,30,80]},theme:'striped'
+  });
+  doc.save(`TYICC_${currentClass}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ── TOAST ──
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
